@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Odd > 10 Minute Analyzer</title>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #eef2f7;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+    .container {
+      background: #fff;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      text-align: center;
+      width: 400px;
+    }
+    h2 {
+      color: #333;
+      margin-bottom: 20px;
+    }
+    input[type="file"] {
+      margin-bottom: 15px;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+      border: none;
+      border-radius: 6px;
+      background-color: #0a7c2f;
+      color: #fff;
+      transition: background 0.3s;
+    }
+    button:hover {
+      background-color: #065a21;
+    }
+    .result {
+      margin-top: 20px;
+      font-weight: bold;
+      color: #0a7c2f;
+    }
+    .all-counts {
+      margin-top: 10px;
+      color: #333;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <h2>Odd > 10 Minute Analyzer</h2>
+    <input type="file" id="fileInput" accept=".xlsx,.xls"><br>
+    <button onclick="analyze()">Analyze</button>
+
+    <div class="result" id="output"></div>
+    <div class="all-counts" id="allCounts"></div>
+  </div>
+
+<script>
+function analyze() {
+  const file = document.getElementById('fileInput').files[0];
+  if (!file) {
+    alert("Excel file එක select කරන්න");
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const data = new Uint8Array(e.target.result);
+    const workbook = XLSX.read(data, { type: 'array' });
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(sheet);
+
+    if (rows.length === 0) {
+      document.getElementById("output").innerHTML = "Excel sheet එක හිස්යි හෝ headers අඩුයි.";
+      return;
+    }
+
+    let minuteCount = {};
+
+    rows.forEach(row => {
+      const odd = parseFloat(row["Odd"]);
+      const time = row["Date & Flight Flew Away Time"];
+      const dateObj = new Date(time);
+
+      if (odd > 10 && time && !isNaN(dateObj)) {
+        const minute = dateObj.getMinutes();
+        minuteCount[minute] = (minuteCount[minute] || 0) + 1;
+      }
+    });
+
+    if (Object.keys(minuteCount).length === 0) {
+      document.getElementById("output").innerHTML = "Odd > 10 සහිත row එකක් හමු නොවීය.";
+      document.getElementById("allCounts").innerHTML = "";
+      return;
+    }
+
+    // Top minutes
+    let max = Math.max(...Object.values(minuteCount));
+    let topMinutes = Object.keys(minuteCount)
+      .filter(m => minuteCount[m] === max)
+      .map(Number)
+      .sort((a,b) => a-b)
+      .join(", ");
+
+    document.getElementById("output").innerHTML =
+      `වැඩිම වතාවක් ගිය minute(s): <br>${topMinutes}<br>(Count: ${max})`;
+
+    // All counts
+    let allCounts = Object.entries(minuteCount)
+      .sort((a,b) => a[0]-b[0])
+      .map(([minute,count]) => `${minute}: ${count}`)
+      .join("<br>");
+
+    document.getElementById("allCounts").innerHTML = "Minute wise count:<br>" + allCounts;
+  };
+
+  reader.readAsArrayBuffer(file);
+}
+</script>
+
+</body>
+</html>
